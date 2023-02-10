@@ -1,0 +1,9 @@
+kubernetes_path = ""
+app_name = ""
+namespace_name = ""
+image_name = "docker.io/registry:latest"
+host_port = 5000
+persistent_volume_size = "500Gi"
+repositories_volume_path = ""
+certificates_volume_path = ""
+authorization_volume_path = ""

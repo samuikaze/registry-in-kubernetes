@@ -1,0 +1,14 @@
+# Before issuing `kubectl apply` command,
+# modify the value contains "<" and ">" to correct value
+# After issued `kubectl apply` command,
+# you need to add parameter below to nginx ingress deployment and restart it.
+# '--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'
+
+# ingress-config-map.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-tcp
+  namespace: ingress-nginx
+data:
+  "5000": self-hosted-registry/podman-registry:5000

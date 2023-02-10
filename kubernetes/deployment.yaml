@@ -1,0 +1,139 @@
+# Before issuing `kubectl apply` command,
+# modify the value contains "<" and ">" to correct value
+
+# namespace-deploy.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: <namespace-name>
+
+---
+# cert-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cert-secrets
+  namespace: <namespace-name>
+type: tls
+data:
+  cert: <tls-crt with b64 encoded>
+  key: <tls-key with b64 encoded>
+
+---
+# auth-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-secrets
+  namespace: <namespace-name>
+type: generic
+data:
+  htpasswd: >-
+    <htpasswd file content with b64 encoded>
+
+---
+# persistent-volume.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: podman-registry-pv
+spec:
+  capacity:
+    storage: <Size of persistent volume>
+  hostPath:
+    path: /var/lib/registry
+  accessModes:
+    - ReadWriteOnce
+
+---
+# persistent-volume-claim.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: podman-registry-pvc
+  namespace: <namespace-name>
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # This value must less then or equal to persistent volumes total size
+      storage: <Size of persistent volume claim>
+
+---
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: <registry app name>
+  namespace: <namespace-name>
+  labels:
+    app_name: <registry app name>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app_name: <registry app name>
+  template:
+    metadata:
+      labels:
+        app_name: <registry app name>
+    spec:
+      volumes:
+        - name: repository-volume
+          persistentVolumeClaim:
+            claimName: podman-registry-pvc
+        - name: certificates-volume
+          secret:
+            secretName: cert-secrets
+        - name: authorization-volume
+          secret:
+            secretName: auth-secrets
+      containers:
+        - name: <registry app name>
+          image: docker.io/registry:latest
+          ports:
+            - hostPort: 5000
+              containerPort: 5000
+              protocol: TCP
+          env:
+            - name: REGISTRY_HTTP_TLS_CERTIFICATES
+              valueFrom:
+                secretKeyRef:
+                  name: cert-secrets
+                  key: cert
+            - name: REGISTRY_HTTP_TLS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cert-secrets
+                  key: key
+            - name: REGISTRY_AUTH_HTPASSWD_REALM
+              value: basic_realm
+            - name: REGISTRY_AUTH_HTPASSWD_PATH
+              value: /var/lib/registry/auth/htpasswd
+          volumeMounts:
+            - name: repository-volume
+              mountPath: /var/lib/registry
+              subPath: registry
+            - name: certificates-volume
+              readOnly: true
+              mountPath: /var/lib/registry/certs
+            - name: authorization-volume
+              mountPath: /var/lib/registry/auth
+          imagePullPolicy: Always
+
+---
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: <registry app name>
+  namespace: <namespace-name>
+spec:
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  selector:
+    app_name: <registry app name>
+  type: ClusterIP
