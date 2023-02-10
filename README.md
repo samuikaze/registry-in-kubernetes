@@ -10,7 +10,7 @@
     $ sudo mkdir /var/lib/registry
     ```
 
-2. Create `certs` and `auth` folder under `registry` in order to serve tls certificates and authentication information.
+2. Create `certs` and `auth` folder in order to serve tls certificates and authentication information.
 
     ```console
     $ cd /var/lib/registry
@@ -19,7 +19,7 @@
 
 3. Create self-signed TLS certificates or copy exists certificate files to this folder
 
-    > Note: To create self-signed certificates, change `DNS:docker-registry` into what domain name you want, and set this domain name into `/etc/hosts`.
+    > Note: To create self-signed certificates, change `DNS:docker-registry` into what domain name you want, and set the domain name into `/etc/hosts`.
 
     ```console
     # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
@@ -48,7 +48,7 @@
         3. Perform `kubectl apply -f deployment.yaml`.
         4. Done.
 
-6. Expose private Docker registry to internet
+6. Expose private Docker registry service to internet
 
     1. Modify `ingress-nginx-tcp.yaml` under `kubernetes`
     2. Perform `kubectl apply -f ingress-nginx-tcp.yaml`
@@ -60,11 +60,12 @@
         > If registry only have self-signed certificate or have no TLS certificates, add `--tls-verify=false` as argument to podman command will ignore TLS certificate verify.
 
         ```console
-        $ curl -u <ACCOUNT>:<PASSWORD> -X GET http://<Kubernetes cluster domain>:5000/v2/_catalog
-        $ podman login <Kubernetes cluster domain>:5000
+        $ curl -u <ACCOUNT>:<PASSWORD> -X GET http://<K8S_DOMAIN>:5000/v2/_catalog
+        $ podman login <K8S_DOMAIN>:5000
+        $ podman image push <K8S_DOMAIN>:5000/<IMAGE_NAME>:<VERSION>
         ```
 
-7. If had SELinux installed in server, need to add allow polocy or push/pull will fail.
+7. If had SELinux installed in server, you need to add allow polocy to SELinux or push/pull will always fail.
 
     > To disable SELinux, see step 5.
 
@@ -86,7 +87,7 @@
         # semodule -i allowpolicy.pp
         ```
 
-    4. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If not working correctly, do step 1. to step 3. until your image can push to registry.
+    4. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If not, do step 1. to step 3. until it work.
     5. To disable SELinux (not recommand)，perform `sudo setenforce 0`
 
 ## References
