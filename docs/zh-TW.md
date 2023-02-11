@@ -49,33 +49,61 @@
     1. 修改 `kubernetes` 資料夾下的 `ingress-nginx-tcp.yaml` 檔，將命名空間與應用程式名稱填入
     2. 執行指令 `kubectl apply -f ingress-nginx-tcp.yaml`
     3. 修改 nginx ingress 的 deployment，將 `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` 加到 `args` 下
-    4. 重新佈署 nginx ingress 的 Pod
-    5. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<K8s 存取網址>:5000/v2/_catalog` 測試服務是否正常
+    4. 將下面的設定新增到 `ingress-nginx-controller` 服務的 `spec.ports` 下
+
+        ```yaml
+        - name: registry
+          protocol: TCP
+          port: 5000
+          targetPort: 5000
+        ````
+
+    5. 重新佈署 nginx ingress 的 Pod
+    6. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<K8s 存取網址>:5000/v2/_catalog` 測試服務是否正常
+        > 若 registry 沒有 TLS 憑證或僅有自簽的 TLS 憑證，則將 `--tls-verify=false` 當作參數傳入到 podman 的相關指令可以使 podman 忽略 TLS 憑證驗證
+
+        ```console
+        $ curl -u <帳號>:<密碼> -X GET http://<Kubernetes 域名>:5000/v2/_catalog
+        $ podman login <Kubernetes 域名>:5000
+        $ podman image push <Kubernetes 域名>:5000/<映像名稱>:<版本>
+        ```
 
 7. 若有安裝 SELinux，需對其設定允許策略
 
-    > 如欲關閉 SELinux，請跳至步驟 5.
+    > 如欲關閉 SELinux，請跳至步驟 8.
 
-    1. 切換使用者為 `root`
+    1. 打開終端機並切換到 `SELinux` 資料夾
+    2. 使用下面指令套用 SELinux 策略
+
+        > 若 `sudo` 仍然無作用, 請將 `allowregistrypolicy.te` 複製到 `/root` 資料夾並切換登入的使用者為 root 後再執行下面的指令
+
+        ```console
+        $ sudo checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
+        $ sudo semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
+        $ sudo semodule -i allowregistrypolicy.pp
+        ```
+
+    3. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法推送或拉取映像，請繼續進行 4. ~ 6. 步驟
+    4. 切換使用者為 `root`
 
         ```console
         $ su -
         ```
 
-    2. 使用指令匯出需要允許的策略
+    5. 使用指令匯出需要允許的策略
 
         ```console
         # audit2allow -a -M allowpolicy < /var/log/audit/audit.log
         ```
 
-    3. 使用指令套用允許策略
+    6. 使用指令套用允許策略
 
         ```console
         # semodule -i allowpolicy.pp
         ```
 
-    4. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法，重複 1. ~ 3. 步驟直到可以正常推送為止
-    5. 若要直接關閉 SELinux (極不推薦)，則使用指令 `sudo setenforce 0` 就可以關閉 SELinux 了
+    7. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法，重複 4. ~ 6. 步驟直到可以正常推送為止
+    8. 若要直接關閉 SELinux (極不推薦)，則使用指令 `sudo setenforce 0` 並修改 `/etc/selinux/config` 中的 `SELINUX=disabled` 就可以關閉 SELinux 了
         > **極不推薦** 關閉 SELinux，這會讓伺服器暴露於危險之中。
 
 ## 參考資料

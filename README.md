@@ -54,8 +54,17 @@
     2. Perform `kubectl apply -f ingress-nginx-tcp.yaml`
     3. Modify nginx ingress deployment, add `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` to `args`.
     4. Restart nginx ingress deployment.
-    5. Done.
-    6. To test if the service is working correctly, issue the command below:
+    5. Add `ingress-nginx-controller` service configuration below to `spec.ports`
+
+        ```yaml
+        - name: registry
+          protocol: TCP
+          port: 5000
+          targetPort: 5000
+        ```
+
+    6. Done.
+    7. To test if the service is working correctly, issue the command below:
 
         > If registry only have self-signed certificate or have no TLS certificates, add `--tls-verify=false` as argument to podman command will ignore TLS certificate verify.
 
@@ -67,28 +76,41 @@
 
 7. If had SELinux installed in server, you need to add allow polocy to SELinux or push/pull will always fail.
 
-    > To disable SELinux, see step 5.
+    > To disable SELinux, see step 8.
 
-    1. Login as `root`
+    1. Open terminal and switch to `SELinux` directory
+    2. Issue commands below to apply SELinux policy
+
+        > If `sudo` not work, copy `allowregistrypolicy.te` to `/root` folder and login as root to perform there commands.
+
+        ```console
+        $ sudo checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
+        $ sudo semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
+        $ sudo semodule -i allowregistrypolicy.pp
+        ```
+
+    3. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, continue to step 4. to 6.
+    4. Login as `root`
 
         ```console
         $ su -
         ```
 
-    2. Export allow policy from SELinux audit log
+    5. Export allow policy from SELinux audit log
 
         ```console
         # audit2allow -a -M allowpolicy < /var/log/audit/audit.log
         ```
 
-    3. Apply policy to SELinux
+    6. Apply policy to SELinux
 
         ```console
         # semodule -i allowpolicy.pp
         ```
 
-    4. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If not, do step 1. to step 3. until it work.
-    5. To disable SELinux (not recommand)，perform `sudo setenforce 0`
+    7. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, do step 4. to 6. until it work.
+    8. To disable SELinux (not recommand)，perform `sudo setenforce 0` and set `SELINUX=disabled` in `/etc/selinux/config` file
+        > Not recommand to disable SELinux, this will insecure your server.
 
 ## References
 
