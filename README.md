@@ -110,7 +110,7 @@
 
     7. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, do step 4. to 6. until it work.
     8. To disable SELinux (not recommand)，perform `sudo setenforce 0` and set `SELINUX=disabled` in `/etc/selinux/config` file
-        > Not recommand to disable SELinux, this will insecure your server.
+        > Not recommand to disable SELinux, this will insecure your server, and [make Dan Walsh weep](https://stopdisablingselinux.com/).
 
 ## References
 
@@ -136,3 +136,4 @@
 - [為 Container 賦予 SELinux 標籤](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/security-context/#%E4%B8%BA-container-%E8%B5%8B%E4%BA%88-selinux-%E6%A0%87%E7%AD%BE)
 - [K8s mount PV with SELinux](https://storage-chaos.io/k8s-selinux-mount-pv.html)
 - [vxflexos-cni.if - Gist](https://gist.github.com/coulof/9df7c9f3178ecf6706b0c5316ab9de7e)
+- [Stop Disabling SELinux](https://stopdisablingselinux.com/)

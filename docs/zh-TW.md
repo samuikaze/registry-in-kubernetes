@@ -104,7 +104,7 @@
 
     7. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法，重複 4. ~ 6. 步驟直到可以正常推送為止
     8. 若要直接關閉 SELinux (極不推薦)，則使用指令 `sudo setenforce 0` 並修改 `/etc/selinux/config` 中的 `SELINUX=disabled` 就可以關閉 SELinux 了
-        > **極不推薦** 關閉 SELinux，這會讓伺服器暴露於危險之中。
+        > **極不推薦** 關閉 SELinux，這會讓伺服器暴露於危險之中，且[會讓 Dan Walsh 傷心](https://stopdisablingselinux.com/)。
 
 ## 參考資料
 
@@ -130,3 +130,4 @@
 - [為 Container 賦予 SELinux 標籤](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/security-context/#%E4%B8%BA-container-%E8%B5%8B%E4%BA%88-selinux-%E6%A0%87%E7%AD%BE)
 - [K8s mount PV with SELinux](https://storage-chaos.io/k8s-selinux-mount-pv.html)
 - [vxflexos-cni.if - Gist](https://gist.github.com/coulof/9df7c9f3178ecf6706b0c5316ab9de7e)
+- [Stop Disabling SELinux](https://stopdisablingselinux.com/)
