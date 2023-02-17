@@ -71,6 +71,8 @@ metadata:
     app_name: <registry app name>
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app_name: <registry app name>
