@@ -74,6 +74,9 @@ resource "kubernetes_deployment_v1" "podman-registry-deployment" {
 
   spec {
     replicas = 1
+    strategy {
+      type = "Recreate"
+    }
     selector {
       match_labels = {
         app_name = var.app_name
