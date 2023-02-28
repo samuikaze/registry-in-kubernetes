@@ -5,7 +5,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: <namespace-name>
+  name: <NAMESPACE_NAME>
 
 ---
 # cert-secrets.yaml
@@ -13,11 +13,13 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: cert-secrets
-  namespace: <namespace-name>
+  namespace: <NAMESPACE_NAME>
 type: tls
 data:
-  cert: <tls-crt with b64 encoded>
-  key: <tls-key with b64 encoded>
+  tls.crt: |-
+    <TLS_CERT_WITH_B64_ENCODED>
+  tls.key: |-
+    <TLS_KEY_WITH_B64_ENCODED>
 
 ---
 # auth-secrets.yaml
@@ -25,11 +27,11 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: auth-secrets
-  namespace: <namespace-name>
+  namespace: <NAMESPACE_NAME>
 type: generic
 data:
   htpasswd: >-
-    <htpasswd file content with b64 encoded>
+    <HTPASSWD_CONTENT_WITH_B64_ENCODED>
 
 ---
 # persistent-volume.yaml
@@ -39,7 +41,7 @@ metadata:
   name: podman-registry-pv
 spec:
   capacity:
-    storage: <Size of persistent volume>
+    storage: <SIZE_OF_PV>
   hostPath:
     path: /var/lib/registry
   accessModes:
@@ -51,33 +53,35 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: podman-registry-pvc
-  namespace: <namespace-name>
+  namespace: <NAMESPACE_NAME>
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       # This value must less then or equal to persistent volumes total size
-      storage: <Size of persistent volume claim>
+      storage: <SIZE_OF_PVC>
 
 ---
 # deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: <registry app name>
-  namespace: <namespace-name>
+  name: <REGISTRY_APP_NAME>
+  namespace: <NAMESPACE_NAME>
   labels:
-    app_name: <registry app name>
+    app_name: <REGISTRY_APP_NAME>
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app_name: <registry app name>
+      app_name: <REGISTRY_APP_NAME>
   template:
     metadata:
       labels:
-        app_name: <registry app name>
+        app_name: <REGISTRY_APP_NAME>
     spec:
       volumes:
         - name: repository-volume
@@ -86,11 +90,16 @@ spec:
         - name: certificates-volume
           secret:
             secretName: cert-secrets
+            items:
+              - key: tls.crt
+                path: ./tls.crt
+              - key: tls.key
+                path: ./tls.key
         - name: authorization-volume
           secret:
             secretName: auth-secrets
       containers:
-        - name: <registry app name>
+        - name: <REGISTRY_APP_NAME>
           image: docker.io/registry:latest
           ports:
             - hostPort: 5000
@@ -98,15 +107,9 @@ spec:
               protocol: TCP
           env:
             - name: REGISTRY_HTTP_TLS_CERTIFICATES
-              valueFrom:
-                secretKeyRef:
-                  name: cert-secrets
-                  key: cert
+              value: /var/lib/registry/certs/tls.crt
             - name: REGISTRY_HTTP_TLS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: cert-secrets
-                  key: key
+              value: /var/lib/registry/certs/tls.key
             - name: REGISTRY_AUTH_HTPASSWD_REALM
               value: basic_realm
             - name: REGISTRY_AUTH_HTPASSWD_PATH
@@ -127,13 +130,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: <registry app name>
-  namespace: <namespace-name>
+  name: <REGISTRY_APP_NAME>
+  namespace: <NAMESPACE_NAME>
 spec:
   ports:
     - protocol: TCP
       port: 5000
       targetPort: 5000
   selector:
-    app_name: <registry app name>
+    app_name: <REGISTRY_APP_NAME>
   type: ClusterIP
