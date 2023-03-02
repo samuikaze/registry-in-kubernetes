@@ -1,0 +1,22 @@
+
+module allowpolicy 1.0;
+
+require {
+	type cgroup_t;
+	type container_var_lib_t;
+	type iptables_t;
+	type container_t;
+	class dir { create ioctl };
+	class file create;
+}
+
+#============= container_t ==============
+
+#!!!! This avc is allowed in the current policy
+allow container_t container_var_lib_t:dir create;
+allow container_t container_var_lib_t:file create;
+
+#============= iptables_t ==============
+
+#!!!! This avc is allowed in the current policy
+allow iptables_t cgroup_t:dir ioctl;

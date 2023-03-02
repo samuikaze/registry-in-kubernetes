@@ -3,3 +3,5 @@
 terraform.tfvars
 !terraform.tfvars.example
 deployment.real.yaml
+/SELinux/*.pp
+/SELinux/*.mod
