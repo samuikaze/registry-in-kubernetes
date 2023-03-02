@@ -126,3 +126,6 @@
 - [K8s mount PV with SELinux](https://storage-chaos.io/k8s-selinux-mount-pv.html)
 - [vxflexos-cni.if - Gist](https://gist.github.com/coulof/9df7c9f3178ecf6706b0c5316ab9de7e)
 - [Stop Disabling SELinux](https://stopdisablingselinux.com/)
+- [Mounting a Kubernetes Secret as a single file inside a Pod](https://www.jeffgeerling.com/blog/2019/mounting-kubernetes-secret-single-file-inside-pod)
+- [建立一個可以通過卷存取 Secret 資料的 Pod](https://kubernetes.io/zh-cn/docs/tasks/inject-data-application/distribute-credentials-secure/#create-a-pod-that-has-access-to-the-secret-data-through-a-volume)
+- [How do I mount a single file from a secret in Kubernetes?](https://stackoverflow.com/a/53296198)
