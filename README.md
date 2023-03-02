@@ -102,12 +102,7 @@
         # audit2allow -a -M allowpolicy < /var/log/audit/audit.log
         ```
 
-    6. Apply policy to SELinux
-
-        ```console
-        # semodule -i allowpolicy.pp
-        ```
-
+    6. Open `allowpolicy.te` and compare to `allowregistrypolicy.te` file. Replaces `container_var_lib_t` into what names in `allowpolicy.te` file and do step 2. to re-apply policy.
     7. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, do step 4. to 6. until it work.
     8. To disable SELinux (not recommand)，perform `sudo setenforce 0` and set `SELINUX=disabled` in `/etc/selinux/config` file
         > Not recommand to disable SELinux, this will insecure your server, and [make Dan Walsh weep](https://stopdisablingselinux.com/).
