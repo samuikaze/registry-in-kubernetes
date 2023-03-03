@@ -10,7 +10,7 @@
 
     ```console
     $ cd /var/lib/registry
-    $ sudo mkdir certs auth`
+    $ sudo mkdir certs auth
     ```
 
 3. 建立 TLS 憑證，或將既有的憑證複製到此資料夾中
