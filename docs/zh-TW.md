@@ -3,19 +3,18 @@
 1. 建立 `registry` 資料夾
 
     ```console
-    $ sudo mkdir /var/lib/registry
+    # mkdir /var/lib/registry
     ```
 
 2. 建立 `certs` 與 `auth` 資料夾，分別存放 TLS 憑證與身分驗證資料
 
     ```console
-    $ cd /var/lib/registry
-    $ sudo mkdir certs auth`
+    # mkdir /var/lib/registry/certs /var/lib/registry/auth`
     ```
 
 3. 建立 TLS 憑證，或將既有的憑證複製到此資料夾中
 
-    > ※ 如欲建立自簽憑證，`DNS:docker-registry` 請改為自己想要的 DNS 名稱，稍後會直接設定到 `/etc/hosts` 檔案中
+    > ※ 如欲建立自簽憑證，`/CN=docker-registry` 與 `DNS:docker-registry` 請改為自己想要的 DNS 名稱，稍後會直接設定到 `/etc/hosts` 檔案中
 
     ```console
     # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
@@ -40,14 +39,18 @@
     - 使用 kubectl
 
         1. 修改 `kubernetes` 資料夾下的 `deployment.yaml` 檔，將檔案中變數的值修改為正確的值
+            > 可以將 `deployment.yaml` 更名為 `deployment.real.yaml`，這份檔案就不會再進版控
         2. 打開終端機並切換到 `kubernetes` 資料夾下
         3. 執行指令 `kubectl apply -f deployment.yaml`
         4. 完成
 
 6. 將私有儲存庫暴露到網際網路上
 
-    1. 修改 `kubernetes` 資料夾下的 `ingress-nginx-tcp.yaml` 檔，將命名空間與應用程式名稱填入
-    2. 執行指令 `kubectl apply -f ingress-nginx-tcp.yaml`
+    1. 修改 `kubernetes` 資料夾下的 `ingress-config.yaml` 檔，將命名空間與應用程式名稱填入
+
+        > 可以將 `ingress-config.yaml` 更名為 `ingress-config.real.yaml`，這份檔案就不會再進版控
+
+    2. 執行指令 `kubectl apply -f ingress-config.real.yaml`
     3. 修改 nginx ingress 的 deployment，將 `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` 加到 `args` 下
     4. 將下面的設定新增到 `ingress-nginx-controller` 服務的 `spec.ports` 下
 
@@ -58,8 +61,7 @@
           targetPort: 5000
         ````
 
-    5. 重新佈署 nginx ingress 的 Pod
-    6. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<K8s 存取網址>:5000/v2/_catalog` 測試服務是否正常
+    5. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<K8s 存取網址>:5000/v2/_catalog` 測試服務是否正常
         > 若 registry 沒有 TLS 憑證或僅有自簽的 TLS 憑證，則將 `--tls-verify=false` 當作參數傳入到 podman 的相關指令可以使 podman 忽略 TLS 憑證驗證
 
         ```console
@@ -75,12 +77,12 @@
     1. 打開終端機並切換到 `SELinux` 資料夾
     2. 使用下面指令套用 SELinux 策略
 
-        > 若 `sudo` 仍然無作用, 請將 `allowregistrypolicy.te` 複製到 `/root` 資料夾並切換登入的使用者為 root 後再執行下面的指令
+        > 若 `sudo` 無作用, 請將 `allowregistrypolicy.te` 複製到 `/root` 資料夾並切換登入的使用者為 root 後再執行下面的指令
 
         ```console
-        $ sudo checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
-        $ sudo semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
-        $ sudo semodule -i allowregistrypolicy.pp
+        # checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
+        # semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
+        # semodule -i allowregistrypolicy.pp
         ```
 
     3. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法推送或拉取映像，請繼續進行 4. ~ 6. 步驟

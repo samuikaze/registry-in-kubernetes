@@ -3,5 +3,6 @@
 terraform.tfvars
 !terraform.tfvars.example
 deployment.real.yaml
+ingress-config.real.yaml
 /SELinux/*.pp
 /SELinux/*.mod

@@ -7,19 +7,18 @@
 1. Create folder for registry.
 
     ```console
-    $ sudo mkdir /var/lib/registry
+    # mkdir /var/lib/registry
     ```
 
 2. Create `certs` and `auth` folder in order to serve tls certificates and authentication information.
 
     ```console
-    $ cd /var/lib/registry
-    $ sudo mkdir certs auth`
+    # mkdir /var/lib/registry/certs /var/lib/registry/auth`
     ```
 
 3. Create self-signed TLS certificates or copy exists certificate files to this folder
 
-    > Note: To create self-signed certificates, change `DNS:docker-registry` into what domain name you want, and set the domain name into `/etc/hosts`.
+    > Note: To create self-signed certificates, change `/CN=docker-registry` and `DNS:docker-registry` into what domain name you want, and set the domain name into `/etc/hosts`.
 
     ```console
     # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
@@ -44,14 +43,16 @@
     - Using kubectl:
 
         1. Modify `deployment.yaml` file under `kubernetes`.
+            > To prevent the edited file be commited to repository, you can copy and rename the file `deployment.yaml` into `deployment.real.yaml`.
         2. Open terminal and change current directory to `kubernetes`.
         3. Perform `kubectl apply -f deployment.yaml`.
         4. Done.
 
 6. Expose private Docker registry service to internet
 
-    1. Modify `ingress-nginx-tcp.yaml` under `kubernetes`
-    2. Perform `kubectl apply -f ingress-nginx-tcp.yaml`
+    1. Modify `ingress-config.yaml` under `kubernetes`
+        > To prevent the edited file be commited to repository, you can copy and rename the file `ingress-config.yaml` into `ingress-config.real.yaml`.
+    2. Perform `kubectl apply -f ingress-config.yaml`
     3. Modify nginx ingress deployment, add `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` to `args`.
     4. Restart nginx ingress deployment.
     5. Add `ingress-nginx-controller` service configuration below to `spec.ports`

@@ -1,0 +1,65 @@
+#
+# Before issuing `kubectl apply` command,
+# modify the value contains "<" and ">" to correct value
+# After issued `kubectl apply` command,
+# you need to add parameter below to nginx ingress deployment and restart it.
+# '--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'
+#
+# If you have proxied your app port to another port, you need to modify service
+# listen port to apply the change, if you haven't proxy exists, then you don't need to
+# change any settings to it.
+#
+# NOTE: You only need to apply this yaml file when you expose your registry by host port
+#
+
+# ingress-config-map.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-tcp
+  namespace: ingress-nginx
+data:
+  # Here's an example, you can just uncomment it and modify it for your propose:
+  # <PROXIED_PORT_NUMBER>: <APP_NAMESPACE>/<APP_NAME>:<APP_LISTEN_PORT>
+
+---
+# ingress-nginx-controller-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+    app.kubernetes.io/version: 1.6.4
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  externalTrafficPolicy: Local
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - appProtocol: http
+    name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - appProtocol: https
+    name: https
+    port: 443
+    protocol: TCP
+    targetPort: https
+  # If you have any proxied port, add it below.
+  # Here's an example, you can just uncomment it and modify it for your propose:
+  # - appProtocol: https
+  #   name: <NAME_OF_THE_PORT>
+  #   protocol: <TCP_or_UDP>
+  #   port: <PROXIED_PORT_NUMBER>
+  #   targetPort: <PROXIED_PORT_NUMBER>
+  selector:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+  type: LoadBalancer
