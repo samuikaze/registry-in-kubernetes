@@ -69,6 +69,25 @@
         $ podman login <Kubernetes 域名>:5000
         $ podman image push <Kubernetes 域名>:5000/<映像名稱>:<版本>
         ```
+    7. 若私有映像儲存庫未使用 TLS 憑證，則須做下列的設定，使 Kubernetes 可以透過 HTTP 協定登入儲存庫或拉取映像
+
+        > 若私有儲存庫需要暴露到網際網路上，仍然建議使用 TLS 憑證以保護儲存庫與客戶端間的連線安全
+
+        > 下面的教學僅適用於 Kubernetes 安裝於 Rocky Linux 9 且以 crio 當作容器的 runtime
+
+        - 打開終端機並輸入 `service status crio` 以找出 `crio.service` 檔案位置
+        - 使用文字編輯器打開 `crio.service` 檔案，並將下列的文字加到 `ExecStart` 區塊中
+
+            > 請將 `<YOUR_PRIVATE_REGISTRY>` 取代為正確的值
+
+            ```txt
+            --insecure-registry=<YOUR_PRIVATE_REGISTRY> \
+            --registry=<YOUR_PRIVATE_REGISTRY> \
+            ```
+
+        - 儲存並關閉檔案
+        - 在終端機中依序執行 `systemctl daemon-reload` 與 `service crio restart` 指令重啟 crio 服務
+        - 現在可以正常使用 HTTP 通訊協定從私有儲存庫中拉取映像了
 
 7. 若有安裝 SELinux，需對其設定允許策略
 

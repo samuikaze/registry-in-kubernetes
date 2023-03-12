@@ -74,6 +74,24 @@
         $ podman login <K8S_DOMAIN>:5000
         $ podman image push <K8S_DOMAIN>:5000/<IMAGE_NAME>:<VERSION>
         ```
+    8. If you don't have any TLS certificates on your registry, you need to configure your cluster to use http protocol when authenticating or pulling images from your private registry
+    
+        > If your registry needs to expose to internet, using TLS certificates to secure your connection between registry and client is recommanded.
+        
+        > This only for Kubernetes is installed on Rocky Linux 9 and using crio as its container runtime.
+        
+        - Open terminal and issue `service status crio` command to find out where `crio.service` file is located.
+        - Using text editor to open `crio.service` file and insert lines below into `ExecStart` block.
+        
+            > Replace `<YOUR_PRIVATE_REGISTRY>` with the correct text.
+        
+            ```txt
+            --insecure-registry=<YOUR_PRIVATE_REGISTRY> \
+            --registry=<YOUR_PRIVATE_REGISTRY> \
+            ```
+        - Save and close the file.
+        - Issue `systemctl daemon-reload` and `service crio restart` to restart crio service.
+        - Here you go! Images can be pulled from your private registry without tls certificates.
 
 7. If had SELinux installed in server, you need to add allow polocy to SELinux or push/pull will always fail.
 
