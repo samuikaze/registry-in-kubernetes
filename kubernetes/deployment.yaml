@@ -126,17 +126,18 @@ spec:
           imagePullPolicy: Always
 
 ---
+# Service is not neccessary when exposing registry by host port.
 # service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: <REGISTRY_APP_NAME>
-  namespace: <NAMESPACE_NAME>
-spec:
-  ports:
-    - protocol: TCP
-      port: 5000
-      targetPort: 5000
-  selector:
-    app_name: <REGISTRY_APP_NAME>
-  type: ClusterIP
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: <REGISTRY_APP_NAME>
+#   namespace: <NAMESPACE_NAME>
+# spec:
+#   ports:
+#     - protocol: TCP
+#       port: 5000
+#       targetPort: 5000
+#   selector:
+#     app_name: <REGISTRY_APP_NAME>
+#   type: ClusterIP
