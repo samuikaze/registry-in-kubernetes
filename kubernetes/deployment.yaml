@@ -102,8 +102,7 @@ spec:
         - name: <REGISTRY_APP_NAME>
           image: docker.io/registry:latest
           ports:
-            - hostPort: 5000
-              containerPort: 5000
+            - containerPort: 5000
               protocol: TCP
           env:
             - name: REGISTRY_HTTP_TLS_CERTIFICATES
@@ -126,18 +125,17 @@ spec:
           imagePullPolicy: Always
 
 ---
-# Service is not neccessary when exposing registry by host port.
 # service.yaml
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: <REGISTRY_APP_NAME>
-#   namespace: <NAMESPACE_NAME>
-# spec:
-#   ports:
-#     - protocol: TCP
-#       port: 5000
-#       targetPort: 5000
-#   selector:
-#     app_name: <REGISTRY_APP_NAME>
-#   type: ClusterIP
+apiVersion: v1
+kind: Service
+metadata:
+  name: <REGISTRY_APP_NAME>
+  namespace: <NAMESPACE_NAME>
+spec:
+  ports:
+    - protocol: TCP
+      port: <PROXIED_PORT_NUMBER>
+      targetPort: 5000
+  selector:
+    app_name: <REGISTRY_APP_NAME>
+  type: ClusterIP
