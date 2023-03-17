@@ -26,18 +26,18 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
 
     > It is recommanded using Let's encrypt TLS certificates or to apply one TLS certificate by yourself when using registry in production environment.
 
-        ```console
-        # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
-        ```
-        
+    ```console
+    # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
+    ```
+
     - Set it to `/etc/hosts` using command below if `<REGISTRY_DOMAIN>` is not a real domain on internet.
-    
+
         ```console
         # echo <IP_ADDRESS> <REGISTRY_DOMAIN> > /etc/hosts
         ```
-        
+
     - Replace `<TLS_CERT_WITH_B64_ENCODED>` in `kubernetes/deployment.yaml` with crt file contents with base64 encoded, and replace `<TLS_KEY_WITH_B64_ENCODED>` in the same file with key file contents with base64 encoded.
-    
+
     > You can use `cat <TARGET_FILE_PATH> | base64` command to converting file content into base64 encoded string. Package base64 needs to be installed first.
 
 4. Configurate authenticate credentials
@@ -46,9 +46,9 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
         ```console
         # podman run --rm --entrypoint htpasswd docker.io/httpd:2 -Bbn <ACCOUNT> <PASSWORD> > auth/htpasswd
         ```
-        
+
     - Replace `<HTPASSWD_CONTENT_WITH_B64_ENCODED>` in `kubernetes/deployment.yaml` file with htpasswd file content with base64 encoded
-    
+
     > You can use `cat <TARGET_FILE_PATH> | base64` command to converting file content into base64 encoded string. Package base64 needs to be installed first.
 
 5. Start to deploy private Docker registry
@@ -81,7 +81,7 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
     6. To test if the service is working correctly, issue the command below:
 
         > If registry only have self-signed certificate or have no TLS certificates, add `--tls-verify=false` as argument to podman or add `-k` as argument to curl command will ignore TLS certificate verify.
-        
+
         > It is recommaned to test image push and pull due to registry container needs to write to physical hard disk. Some security tool like SELinux does not allow this.
 
         ```console
@@ -89,21 +89,23 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
         $ podman login <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>
         $ podman image push <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/<IMAGE_NAME>:<VERSION>
         ```
-    8. If you don't have any TLS certificates on your registry, you need to configure your cluster to use http protocol when authenticating or pulling images from your private registry
-    
+
+    7. If you don't have any TLS certificates on your registry, you need to configure your cluster to use http protocol when authenticating or pulling images from your private registry
+
         > If your registry needs to expose to internet, using TLS certificates to secure your connection between registry and client is recommanded.
-        
+
         > This only for Kubernetes is installed on Rocky Linux 9 and using crio as its container runtime.
-        
+
         - Open terminal and issue `service status crio` command to find out where `crio.service` file is located.
         - Using text editor to open `crio.service` file and insert lines below into `ExecStart` block.
-        
+
             > Replace `<YOUR_PRIVATE_REGISTRY>` with the correct text.
-        
+
             ```txt
             --insecure-registry=<YOUR_PRIVATE_REGISTRY> \
             --registry=<YOUR_PRIVATE_REGISTRY> \
             ```
+
         - Save and close the file.
         - Issue `systemctl daemon-reload` and `service crio restart` to restart crio service.
         - Here you go! Images can be pulled from your private registry without tls certificates.
