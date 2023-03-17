@@ -1,5 +1,9 @@
 # Host private Docker registry in self-hosted Kubernetes cluster
 
+Host private Docker registry in self-hosted Kubernetes cluster has no any benefit.
+
+Unless you want manage all traffic in one place, it is recommanded to host Docker registry in Docker or Podman and expose registry to internet directly.
+
 - [中文文檔](/docs/zh-TW.md)
 
 ## Steps
@@ -13,22 +17,39 @@
 2. Create `certs` and `auth` folder in order to serve tls certificates and authentication information.
 
     ```console
-    # mkdir /var/lib/registry/certs /var/lib/registry/auth`
+    # mkdir /var/lib/registry/certs /var/lib/registry/auth
     ```
 
 3. Create self-signed TLS certificates or copy exists certificate files to this folder
 
-    > Note: To create self-signed certificates, change `/CN=docker-registry` and `DNS:docker-registry` into what domain name you want, and set the domain name into `/etc/hosts`.
+    - you can create self-signed TLS certificates if you don't have. Change `<REGISTRY_DOMAIN>` into what domain you want below.
 
-    ```console
-    # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
-    ```
+    > It is recommanded using Let's encrypt TLS certificates or to apply one TLS certificate by yourself when using registry in production environment.
 
-4. Create authentication information files. Change `<ACCOUNT>` and `<PASSWORD>` into what you want.
+        ```console
+        # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
+        ```
+        
+    - Set it to `/etc/hosts` using command below if `<REGISTRY_DOMAIN>` is not a real domain on internet.
+    
+        ```console
+        # echo <IP_ADDRESS> <REGISTRY_DOMAIN> > /etc/hosts
+        ```
+        
+    - Replace `<TLS_CERT_WITH_B64_ENCODED>` in `kubernetes/deployment.yaml` with crt file contents with base64 encoded, and replace `<TLS_KEY_WITH_B64_ENCODED>` in the same file with key file contents with base64 encoded.
+    
+    > You can use `cat <TARGET_FILE_PATH> | base64` command to converting file content into base64 encoded string. Package base64 needs to be installed first.
 
-    ```console
-    # podman run --rm --entrypoint htpasswd docker.io/httpd:2 -Bbn <ACCOUNT> <PASSWORD> > auth/htpasswd
-    ```
+4. Configurate authenticate credentials
+    - Create authentication information files. Change `<ACCOUNT>` and `<PASSWORD>` into what you want.
+
+        ```console
+        # podman run --rm --entrypoint htpasswd docker.io/httpd:2 -Bbn <ACCOUNT> <PASSWORD> > auth/htpasswd
+        ```
+        
+    - Replace `<HTPASSWD_CONTENT_WITH_B64_ENCODED>` in `kubernetes/deployment.yaml` file with htpasswd file content with base64 encoded
+    
+    > You can use `cat <TARGET_FILE_PATH> | base64` command to converting file content into base64 encoded string. Package base64 needs to be installed first.
 
 5. Start to deploy private Docker registry
 
@@ -53,26 +74,20 @@
     1. Modify `ingress-config.yaml` under `kubernetes`
         > To prevent the edited file be commited to repository, you can copy and rename the file `ingress-config.yaml` into `ingress-config.real.yaml`.
     2. Perform `kubectl apply -f ingress-config.yaml`
+        > Before apply the command, edit the yaml file with correct expose port number. The port number needs to be same as `<PROXIED_PORT_NUMBER>` in all yaml files in `kubernetes` directory.
     3. Modify nginx ingress deployment, add `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` to `args`.
     4. Restart nginx ingress deployment.
-    5. Add `ingress-nginx-controller` service configuration below to `spec.ports`
+    5. Done.
+    6. To test if the service is working correctly, issue the command below:
 
-        ```yaml
-        - name: registry
-          protocol: TCP
-          port: 5000
-          targetPort: 5000
-        ```
-
-    6. Done.
-    7. To test if the service is working correctly, issue the command below:
-
-        > If registry only have self-signed certificate or have no TLS certificates, add `--tls-verify=false` as argument to podman command will ignore TLS certificate verify.
+        > If registry only have self-signed certificate or have no TLS certificates, add `--tls-verify=false` as argument to podman or add `-k` as argument to curl command will ignore TLS certificate verify.
+        
+        > It is recommaned to test image push and pull due to registry container needs to write to physical hard disk. Some security tool like SELinux does not allow this.
 
         ```console
-        $ curl -u <ACCOUNT>:<PASSWORD> -X GET http://<K8S_DOMAIN>:5000/v2/_catalog
-        $ podman login <K8S_DOMAIN>:5000
-        $ podman image push <K8S_DOMAIN>:5000/<IMAGE_NAME>:<VERSION>
+        $ curl -u <ACCOUNT>:<PASSWORD> -X GET http://<REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/v2/_catalog
+        $ podman login <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>
+        $ podman image push <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/<IMAGE_NAME>:<VERSION>
         ```
     8. If you don't have any TLS certificates on your registry, you need to configure your cluster to use http protocol when authenticating or pulling images from your private registry
     
@@ -100,7 +115,7 @@
     1. Open terminal and switch to `SELinux` directory
     2. Issue commands below to apply SELinux policy
 
-        > If `sudo` not work, copy `allowregistrypolicy.te` to `/root` folder and login as root to perform there commands.
+        > If `sudo` not work, login as root then perform these commands again.
 
         ```console
         $ sudo checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
