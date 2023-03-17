@@ -11,7 +11,7 @@
 2. 建立 `certs` 與 `auth` 資料夾，分別存放 TLS 憑證與身分驗證資料
 
     ```console
-    # mkdir /var/lib/registry/certs /var/lib/registry/auth`
+    # mkdir /var/lib/registry/certs /var/lib/registry/auth
     ```
 
 3. 建立 TLS 憑證，或將既有的憑證寫到 Kubernetes secrets 中
