@@ -9,8 +9,6 @@
 # listen port to apply the change, if you haven't proxy exists, then you don't need to
 # change any settings to it.
 #
-# NOTE: You only need to apply this yaml file when you expose your registry by host port
-#
 
 # ingress-config-map.yaml
 apiVersion: v1
@@ -20,7 +18,7 @@ metadata:
   namespace: ingress-nginx
 data:
   # Here's an example, you can just uncomment it and modify it for your propose:
-  # <PROXIED_PORT_NUMBER>: <APP_NAMESPACE>/<APP_NAME>:<APP_LISTEN_PORT>
+  # <PROXIED_PORT_NUMBER>: <APP_NAMESPACE>/<APP_NAME>:<PROXIED_PORT_NUMBER>
 
 ---
 # ingress-nginx-controller-service.yaml
