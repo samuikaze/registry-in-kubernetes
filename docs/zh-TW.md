@@ -20,16 +20,16 @@
 
     > 若是要使用於正式環境中，建議使用 Let's encrypt 的憑證，或自己去申請一張憑證
 
-        ```console
-        # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=<REGISTRY_DOMAIN>" -addext "subjectAltName = DNS:<REGISTRY_DOMAIN>"
-        ```
-    
+    ```console
+    # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=<REGISTRY_DOMAIN>" -addext "subjectAltName = DNS:<REGISTRY_DOMAIN>"
+    ```
+
     - `<REGISTRY_DOMAIN>` 若為自己定義的網域名稱，請透過下列指令設定到 `/etc/hosts` 檔案中
 
         ```console
         # echo <IP_ADDRESS> <REGISTRY_DOMAIN> > /etc/hosts
         ```
-    
+
     - 將 crt 檔案內容以 Base64 編碼取代 `kubernetes/deployment.yaml` 檔案中的 `<TLS_CERT_WITH_B64_ENCODED>` 區塊，將 key 檔案內容以 Base64 編碼取代同檔案中的 `<TLS_KEY_WITH_B64_ENCODED>` 區塊
 
     > Linux 可以使用 `cat <TARGET_FILE_PATH> | base64` 將檔案內容轉換為 Base64 編碼，但須先安裝 base64 套件
@@ -41,7 +41,7 @@
         ```console
         # podman run --rm --entrypoint htpasswd docker.io/httpd:2 -Bbn <帳號> <密碼> > auth/htpasswd
         ```
-        
+
     - 將 `htpasswd` 內容以 Base64 編碼後取代 `kubernetes/deployment.yaml` 檔案中的 `<HTPASSWD_CONTENT_WITH_B64_ENCODED>` 區塊
 
     > Linux 可以使用 `cat <TARGET_FILE_PATH> | base64` 將檔案內容轉換為 Base64 編碼，但須先安裝 base64 套件
@@ -74,9 +74,9 @@
 
         > 執行前請先調整 yaml 檔中埠號的設定，這個設定值須與 `kubernetes` 資料夾下所有 yaml 檔中的 `<PROXIED_PORT_NUMBER>` 值相同
 
-    4. 修改 nginx ingress 的 deployment，將 `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` 加到 `args` 下
+    3. 修改 nginx ingress 的 deployment，將 `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` 加到 `args` 下
 
-    5. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/v2/_catalog` 或 `podman login -u <帳號> -p <密碼> <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>` 測試服務是否正常
+    4. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/v2/_catalog` 或 `podman login -u <帳號> -p <密碼> <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>` 測試服務是否正常
         > 若 registry 沒有 TLS 憑證或僅有自簽的 TLS 憑證，則將 `--tls-verify=false` 當作參數傳入到 podman 的相關指令可以使 podman 忽略 TLS 憑證驗證
         > 同理 curl 在沒有 TLS 憑證或僅有自簽的 TLS 憑證的情況下，參數多帶 `-k` 即可讓 curl 忽略 TLS 憑證的驗證
         > Image push 一定要測試，由於是 Container 要直接寫資料到實體硬碟路徑上，SELinux 會阻擋此類狀況發生，這會導致 image 無法正常上傳到 registry 中
@@ -86,7 +86,8 @@
         $ podman login <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>
         $ podman image push <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/<映像名稱>:<版本>
         ```
-    7. 若私有映像儲存庫未使用 TLS 憑證，則須做下列的設定，使 Kubernetes 可以透過 HTTP 協定登入儲存庫或拉取映像
+
+    5. 若私有映像儲存庫未使用 TLS 憑證，則須做下列的設定，使 Kubernetes 可以透過 HTTP 協定登入儲存庫或拉取映像
 
         > 若私有儲存庫需要暴露到網際網路上，仍然建議使用 TLS 憑證以保護儲存庫與客戶端間的連線安全
 
