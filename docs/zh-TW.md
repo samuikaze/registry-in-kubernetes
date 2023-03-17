@@ -1,5 +1,7 @@
 # 在 Kubernetes 中架設私有 Docker Registry
 
+實際上將 registry 架設到 Kubernetes 中並沒有什麼好處，除非想要流量有統一的出入口 (Kubernetes ingress)，否則仍然建議直接將 registry 架設在 Docker 或 Podman 中就好
+
 1. 建立 `registry` 資料夾
 
     ```console
@@ -12,19 +14,37 @@
     # mkdir /var/lib/registry/certs /var/lib/registry/auth`
     ```
 
-3. 建立 TLS 憑證，或將既有的憑證複製到此資料夾中
+3. 建立 TLS 憑證，或將既有的憑證寫到 Kubernetes secrets 中
 
-    > ※ 如欲建立自簽憑證，`/CN=docker-registry` 與 `DNS:docker-registry` 請改為自己想要的 DNS 名稱，稍後會直接設定到 `/etc/hosts` 檔案中
+    - 沒有憑證者可以先建立自簽憑證憑證，`<REGISTRY_DOMAIN>` 請改為正確的 registry 網域名稱
 
-    ```console
-    # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
-    ```
+    > 若是要使用於正式環境中，建議使用 Let's encrypt 的憑證，或自己去申請一張憑證
 
-4. 建立身分驗證檔案，`<帳號>` 與 `<密碼>` 請更改為自己想要的帳號密碼
+        ```console
+        # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=<REGISTRY_DOMAIN>" -addext "subjectAltName = DNS:<REGISTRY_DOMAIN>"
+        ```
+    
+    - `<REGISTRY_DOMAIN>` 若為自己定義的網域名稱，請透過下列指令設定到 `/etc/hosts` 檔案中
 
-    ```console
-    # podman run --rm --entrypoint htpasswd docker.io/httpd:2 -Bbn <帳號> <密碼> > auth/htpasswd
-    ```
+        ```console
+        # echo <IP_ADDRESS> <REGISTRY_DOMAIN> > /etc/hosts
+        ```
+    
+    - 將 crt 檔案內容以 Base64 編碼取代 `kubernetes/deployment.yaml` 檔案中的 `<TLS_CERT_WITH_B64_ENCODED>` 區塊，將 key 檔案內容以 Base64 編碼取代同檔案中的 `<TLS_KEY_WITH_B64_ENCODED>` 區塊
+
+    > Linux 可以使用 `cat <TARGET_FILE_PATH> | base64` 將檔案內容轉換為 Base64 編碼，但須先安裝 base64 套件
+
+4. 設定 registry 登入的帳號密碼
+
+    - 建立身分驗證檔案，`<帳號>` 與 `<密碼>` 請更改為自己想要的帳號密碼
+
+        ```console
+        # podman run --rm --entrypoint htpasswd docker.io/httpd:2 -Bbn <帳號> <密碼> > auth/htpasswd
+        ```
+        
+    - 將 `htpasswd` 內容以 Base64 編碼後取代 `kubernetes/deployment.yaml` 檔案中的 `<HTPASSWD_CONTENT_WITH_B64_ENCODED>` 區塊
+
+    > Linux 可以使用 `cat <TARGET_FILE_PATH> | base64` 將檔案內容轉換為 Base64 編碼，但須先安裝 base64 套件
 
 5. 開始部署私有 Docker Registry
 
@@ -51,29 +71,26 @@
         > 可以將 `ingress-config.yaml` 更名為 `ingress-config.real.yaml`，這份檔案就不會再進版控
 
     2. 執行指令 `kubectl apply -f ingress-config.real.yaml`
-    3. 修改 nginx ingress 的 deployment，將 `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` 加到 `args` 下
-    4. 將下面的設定新增到 `ingress-nginx-controller` 服務的 `spec.ports` 下
 
-        ```yaml
-        - name: registry
-          protocol: TCP
-          port: 5000
-          targetPort: 5000
-        ````
+        > 執行前請先調整 yaml 檔中埠號的設定，這個設定值須與 `kubernetes` 資料夾下所有 yaml 檔中的 `<PROXIED_PORT_NUMBER>` 值相同
 
-    5. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<K8s 存取網址>:5000/v2/_catalog` 測試服務是否正常
+    4. 修改 nginx ingress 的 deployment，將 `'--tcp-services-configmap=$(POD_NAMESPACE)/ingress-nginx-tcp'` 加到 `args` 下
+
+    5. 完成，可利用 `curl -u <帳號>:<密碼> -X GET http://<REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/v2/_catalog` 或 `podman login -u <帳號> -p <密碼> <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>` 測試服務是否正常
         > 若 registry 沒有 TLS 憑證或僅有自簽的 TLS 憑證，則將 `--tls-verify=false` 當作參數傳入到 podman 的相關指令可以使 podman 忽略 TLS 憑證驗證
+        > 同理 curl 在沒有 TLS 憑證或僅有自簽的 TLS 憑證的情況下，參數多帶 `-k` 即可讓 curl 忽略 TLS 憑證的驗證
+        > Image push 一定要測試，由於是 Container 要直接寫資料到實體硬碟路徑上，SELinux 會阻擋此類狀況發生，這會導致 image 無法正常上傳到 registry 中
 
         ```console
-        $ curl -u <帳號>:<密碼> -X GET http://<Kubernetes 域名>:5000/v2/_catalog
-        $ podman login <Kubernetes 域名>:5000
-        $ podman image push <Kubernetes 域名>:5000/<映像名稱>:<版本>
+        $ curl -u <帳號>:<密碼> -X GET http://<REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/v2/_catalog
+        $ podman login <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>
+        $ podman image push <REGISTRY_DOMAIN>:<PROXIED_PORT_NUMBER>/<映像名稱>:<版本>
         ```
     7. 若私有映像儲存庫未使用 TLS 憑證，則須做下列的設定，使 Kubernetes 可以透過 HTTP 協定登入儲存庫或拉取映像
 
         > 若私有儲存庫需要暴露到網際網路上，仍然建議使用 TLS 憑證以保護儲存庫與客戶端間的連線安全
 
-        > 下面的教學僅適用於 Kubernetes 安裝於 Rocky Linux 9 且以 crio 當作容器的 runtime
+        > 下面的說明僅適用於 Kubernetes 安裝於 Rocky Linux 9 且以 crio 當作容器的 runtime
 
         - 打開終端機並輸入 `service status crio` 以找出 `crio.service` 檔案位置
         - 使用文字編輯器打開 `crio.service` 檔案，並將下列的文字加到 `ExecStart` 區塊中
@@ -96,7 +113,7 @@
     1. 打開終端機並切換到 `SELinux` 資料夾
     2. 使用下面指令套用 SELinux 策略
 
-        > 若 `sudo` 無作用, 請將 `allowregistrypolicy.te` 複製到 `/root` 資料夾並切換登入的使用者為 root 後再執行下面的指令
+        > 若 `sudo` 無作用, 請切換登入的使用者為 root ，切換到正確的資料夾路徑後再執行下面的指令
 
         ```console
         # checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
