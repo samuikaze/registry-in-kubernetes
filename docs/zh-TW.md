@@ -11,7 +11,8 @@
 2. 建立 `certs` 與 `auth` 資料夾，分別存放 TLS 憑證與身分驗證資料
 
     ```console
-    # mkdir /var/lib/registry/certs /var/lib/registry/auth
+    # cd /var/lib/registry/
+    # mkdir certs auth
     ```
 
 3. 建立 TLS 憑證，或將既有的憑證寫到 Kubernetes secrets 中
@@ -46,7 +47,40 @@
 
     > Linux 可以使用 `cat <TARGET_FILE_PATH> | base64` 將檔案內容轉換為 Base64 編碼，但須先安裝 base64 套件
 
-5. 開始部署私有 Docker Registry
+5. 若有安裝 SELinux，需對其設定允許策略
+
+    > 如欲關閉 SELinux，請跳至步驟 8.
+
+    1. 打開終端機並切換到 `SELinux` 資料夾
+    2. 使用下面指令套用 SELinux 策略
+
+        > 若 `sudo` 無作用, 請切換登入的使用者為 root ，切換到正確的資料夾路徑後再執行下面的指令
+
+        ```console
+        # checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
+        # semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
+        # semodule -i allowregistrypolicy.pp
+        ```
+
+    3. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法推送或拉取映像，請繼續進行 4. ~ 6. 步驟
+    4. 切換使用者為 `root`
+
+        ```console
+        $ su -
+        ```
+
+    5. 使用指令匯出需要允許的策略
+
+        ```console
+        # audit2allow -a -M allowpolicy < /var/log/audit/audit.log
+        ```
+
+    6. 打開 `allowpolicy.te` 與 `allowregistrypolicy.te` 做比較，看 `container_var_lib_t` 在 `allowpolicy.te` 檔中是什麼名稱，把它取代成該名稱後，進行步驟 2. 重新套用策略。
+    7. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法，重複 4. ~ 6. 步驟直到可以正常推送為止
+    8. 若要直接關閉 SELinux (極不推薦)，則使用指令 `sudo setenforce 0` 並修改 `/etc/selinux/config` 中的 `SELINUX=disabled` 就可以關閉 SELinux 了
+        > **極不推薦** 關閉 SELinux，這會讓伺服器暴露於危險之中，且[會讓 Dan Walsh 傷心](https://stopdisablingselinux.com/)。
+
+6. 開始部署私有 Docker Registry
 
     - 使用 Terraform
 
@@ -64,7 +98,7 @@
         3. 執行指令 `kubectl apply -f deployment.yaml`
         4. 完成
 
-6. 將私有儲存庫暴露到網際網路上
+7. 將私有儲存庫暴露到網際網路上
 
     1. 修改 `kubernetes` 資料夾下的 `ingress-config.yaml` 檔，將命名空間與應用程式名稱填入
 
@@ -106,39 +140,6 @@
         - 儲存並關閉檔案
         - 在終端機中依序執行 `systemctl daemon-reload` 與 `service crio restart` 指令重啟 crio 服務
         - 現在可以正常使用 HTTP 通訊協定從私有儲存庫中拉取映像了
-
-7. 若有安裝 SELinux，需對其設定允許策略
-
-    > 如欲關閉 SELinux，請跳至步驟 8.
-
-    1. 打開終端機並切換到 `SELinux` 資料夾
-    2. 使用下面指令套用 SELinux 策略
-
-        > 若 `sudo` 無作用, 請切換登入的使用者為 root ，切換到正確的資料夾路徑後再執行下面的指令
-
-        ```console
-        # checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
-        # semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
-        # semodule -i allowregistrypolicy.pp
-        ```
-
-    3. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法推送或拉取映像，請繼續進行 4. ~ 6. 步驟
-    4. 切換使用者為 `root`
-
-        ```console
-        $ su -
-        ```
-
-    5. 使用指令匯出需要允許的策略
-
-        ```console
-        # audit2allow -a -M allowpolicy < /var/log/audit/audit.log
-        ```
-
-    6. 打開 `allowpolicy.te` 與 `allowregistrypolicy.te` 做比較，看 `container_var_lib_t` 在 `allowpolicy.te` 檔中是什麼名稱，把它取代成該名稱後，進行步驟 2. 重新套用策略。
-    7. 使用 `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` 測試映像是否可以正確被推到儲存庫中，若仍無法，重複 4. ~ 6. 步驟直到可以正常推送為止
-    8. 若要直接關閉 SELinux (極不推薦)，則使用指令 `sudo setenforce 0` 並修改 `/etc/selinux/config` 中的 `SELINUX=disabled` 就可以關閉 SELinux 了
-        > **極不推薦** 關閉 SELinux，這會讓伺服器暴露於危險之中，且[會讓 Dan Walsh 傷心](https://stopdisablingselinux.com/)。
 
 ## 參考資料
 

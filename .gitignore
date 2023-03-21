@@ -2,7 +2,7 @@
 .terraform.lock.hcl
 terraform.tfvars
 !terraform.tfvars.example
-deployment.real.yaml
-ingress-config.real.yaml
+deployment.*.yaml
+ingress-config.*.yaml
 /SELinux/*.pp
 /SELinux/*.mod

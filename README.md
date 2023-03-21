@@ -17,7 +17,8 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
 2. Create `certs` and `auth` folder in order to serve tls certificates and authentication information.
 
     ```console
-    # mkdir /var/lib/registry/certs /var/lib/registry/auth
+    # cd /var/lib/registry
+    # mkdir certs auth
     ```
 
 3. Create self-signed TLS certificates or copy exists certificate files to this folder
@@ -27,7 +28,7 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
     > It is recommanded using Let's encrypt TLS certificates or to apply one TLS certificate by yourself when using registry in production environment.
 
     ```console
-    # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=docker-registry" -addext "subjectAltName = DNS:docker-registry"
+    # openssl req -x509 -newkey rsa:4096 -days 365 -nodes -sha256 -keyout certs/tls.key -out certs/tls.crt -subj "/CN=<REGISTRY_DOMAIN>" -addext "subjectAltName = DNS:<REGISTRY_DOMAIN>"
     ```
 
     - Set it to `/etc/hosts` using command below if `<REGISTRY_DOMAIN>` is not a real domain on internet.
@@ -51,7 +52,40 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
 
     > You can use `cat <TARGET_FILE_PATH> | base64` command to converting file content into base64 encoded string. Package base64 needs to be installed first.
 
-5. Start to deploy private Docker registry
+5. If had SELinux installed in server, you need to add allow polocy to SELinux or push/pull will always fail.
+
+    > To disable SELinux, see step 8.
+
+    1. Open terminal and switch to `SELinux` directory
+    2. Issue commands below to apply SELinux policy
+
+        > If `sudo` not work, login as root then perform these commands again.
+
+        ```console
+        $ sudo checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
+        $ sudo semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
+        $ sudo semodule -i allowregistrypolicy.pp
+        ```
+
+    3. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, continue to step 4. to 6.
+    4. Login as `root`
+
+        ```console
+        $ su -
+        ```
+
+    5. Export allow policy from SELinux audit log
+
+        ```console
+        # audit2allow -a -M allowpolicy < /var/log/audit/audit.log
+        ```
+
+    6. Open `allowpolicy.te` and compare to `allowregistrypolicy.te` file. Replaces `container_var_lib_t` into what names in `allowpolicy.te` file and do step 2. to re-apply policy.
+    7. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, do step 4. to 6. until it work.
+    8. To disable SELinux (not recommand)，perform `sudo setenforce 0` and set `SELINUX=disabled` in `/etc/selinux/config` file
+        > Not recommand to disable SELinux, this will insecure your server, and [make Dan Walsh weep](https://stopdisablingselinux.com/).
+
+6. Start to deploy private Docker registry
 
     - Using Terraform:
 
@@ -69,7 +103,7 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
         3. Perform `kubectl apply -f deployment.yaml`.
         4. Done.
 
-6. Expose private Docker registry service to internet
+7. Expose private Docker registry service to internet
 
     1. Modify `ingress-config.yaml` under `kubernetes`
         > To prevent the edited file be commited to repository, you can copy and rename the file `ingress-config.yaml` into `ingress-config.real.yaml`.
@@ -109,39 +143,6 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
         - Save and close the file.
         - Issue `systemctl daemon-reload` and `service crio restart` to restart crio service.
         - Here you go! Images can be pulled from your private registry without tls certificates.
-
-7. If had SELinux installed in server, you need to add allow polocy to SELinux or push/pull will always fail.
-
-    > To disable SELinux, see step 8.
-
-    1. Open terminal and switch to `SELinux` directory
-    2. Issue commands below to apply SELinux policy
-
-        > If `sudo` not work, login as root then perform these commands again.
-
-        ```console
-        $ sudo checkmodule -M -m -o allowregistrypolicy.mod allowregistrypolicy.te
-        $ sudo semodule_package -o allowregistrypolicy.pp -m allowregistrypolicy.mod
-        $ sudo semodule -i allowregistrypolicy.pp
-        ```
-
-    3. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, continue to step 4. to 6.
-    4. Login as `root`
-
-        ```console
-        $ su -
-        ```
-
-    5. Export allow policy from SELinux audit log
-
-        ```console
-        # audit2allow -a -M allowpolicy < /var/log/audit/audit.log
-        ```
-
-    6. Open `allowpolicy.te` and compare to `allowregistrypolicy.te` file. Replaces `container_var_lib_t` into what names in `allowpolicy.te` file and do step 2. to re-apply policy.
-    7. Perform `podman image push <DOMAIN>/<IMAGE_NAME>:<VERSION>` to test if image can push to registry. If can't, do step 4. to 6. until it work.
-    8. To disable SELinux (not recommand)，perform `sudo setenforce 0` and set `SELINUX=disabled` in `/etc/selinux/config` file
-        > Not recommand to disable SELinux, this will insecure your server, and [make Dan Walsh weep](https://stopdisablingselinux.com/).
 
 ## References
 
