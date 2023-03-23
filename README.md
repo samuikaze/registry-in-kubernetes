@@ -87,6 +87,8 @@ Unless you want manage all traffic in one place, it is recommanded to host Docke
 
 6. Start to deploy private Docker registry
 
+    > Edit the configuration in Helm yaml if you install your ingress-nginx using Helm.
+
     - Using Terraform:
 
         1. Rename `terraform.tfvars.example` to `terraform.tfvars` and modify value in `terraform.tfvars` file.

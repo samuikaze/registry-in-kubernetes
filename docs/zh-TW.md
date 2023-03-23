@@ -81,6 +81,7 @@
         > **極不推薦** 關閉 SELinux，這會讓伺服器暴露於危險之中，且[會讓 Dan Walsh 傷心](https://stopdisablingselinux.com/)。
 
 6. 開始部署私有 Docker Registry
+    > 如果是以 Helm 安裝 ingress-nginx，請直接編輯 Helm 的 yaml 檔
 
     - 使用 Terraform
 

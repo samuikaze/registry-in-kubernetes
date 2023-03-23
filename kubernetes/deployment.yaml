@@ -9,6 +9,7 @@ metadata:
 
 ---
 # cert-secrets.yaml
+# If you using cert-manager to manage the certificates, you can comment out this yaml content
 apiVersion: v1
 kind: Secret
 metadata:
