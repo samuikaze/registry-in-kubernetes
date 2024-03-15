@@ -170,3 +170,6 @@
 - [Mounting a Kubernetes Secret as a single file inside a Pod](https://www.jeffgeerling.com/blog/2019/mounting-kubernetes-secret-single-file-inside-pod)
 - [建立一個可以通過卷存取 Secret 資料的 Pod](https://kubernetes.io/zh-cn/docs/tasks/inject-data-application/distribute-credentials-secure/#create-a-pod-that-has-access-to-the-secret-data-through-a-volume)
 - [How do I mount a single file from a secret in Kubernetes?](https://stackoverflow.com/a/53296198)
+- [Distribution Registry - Configuring a registry - debug](https://distribution.github.io/distribution#debug)
+- [設定存活、就緒和啟動探針](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+- [Kubernetes: Issues with liveness / readiness probe on S3 storage hosted Docker Registry](https://stackoverflow.com/q/61103591)

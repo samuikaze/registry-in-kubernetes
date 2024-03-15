@@ -64,6 +64,22 @@ spec:
       storage: <SIZE_OF_PVC>
 
 ---
+# config-map.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: podman-registry-configs
+  namespace: <NAMESPACE_NAME>
+data:
+  auth.htpasswd_realm: basic_realm
+  auth.htpasswd_path: "/var/lib/registry/auth/htpasswd"
+  http.tls_certificate: "/var/lib/registry/certs/tls.crt"
+  http.tls_key: "/var/lib/registry/certs/tls.key"
+  http.debug_addr: ":5001"
+  http.debug_prometheus_enabled: "true"
+  http.debug_prometheus_path: "/metrics"
+
+---
 # deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -103,17 +119,60 @@ spec:
         - name: <REGISTRY_APP_NAME>
           image: docker.io/registry:latest
           ports:
-            - containerPort: 5000
+            - name: registry-port
+              containerPort: 5000
+              protocol: TCP
+            - name: shr-metrics
+              containerPort: 5001
               protocol: TCP
           env:
-            - name: REGISTRY_HTTP_TLS_CERTIFICATES
-              value: /var/lib/registry/certs/tls.crt
+            - name: REGISTRY_HTTP_TLS_CERTIFICATE
+              valueFrom:
+                configMapKeyRef:
+                  name: podman-registry-configs
+                  key: http.tls_certificate
             - name: REGISTRY_HTTP_TLS_KEY
-              value: /var/lib/registry/certs/tls.key
+              valueFrom:
+                configMapKeyRef:
+                  name: podman-registry-configs
+                  key: http.tls_key
             - name: REGISTRY_AUTH_HTPASSWD_REALM
-              value: basic_realm
+              valueFrom:
+                configMapKeyRef:
+                  name: podman-registry-configs
+                  key: auth.htpasswd_realm
             - name: REGISTRY_AUTH_HTPASSWD_PATH
-              value: /var/lib/registry/auth/htpasswd
+              valueFrom:
+                configMapKeyRef:
+                  name: podman-registry-configs
+                  key: auth.htpasswd_path
+            - name: REGISTRY_HTTP_DEBUG_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: podman-registry-configs
+                  key: http.debug_addr
+            - name: REGISTRY_HTTP_DEBUG_PROMETHEUS_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: podman-registry-configs
+                  key: http.debug_prometheus_enabled
+            - name: REGISTRY_HTTP_DEBUG_PROMETHEUS_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: podman-registry-configs
+                  key: http.debug_prometheus_path
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: shr-metrics
+            failureThreshold: 5
+            periodSeconds: 60
+          startupProbe:
+            httpGet:
+              path: /metrics
+              port: shr-metrics
+            failureThreshold: 30
+            periodSeconds: 10
           volumeMounts:
             - name: repository-volume
               mountPath: /var/lib/registry
